@@ -11,7 +11,7 @@ Interactive view of the Phase 1 and Phase 3 results: [docs/index.html](docs/inde
 | Phase | What | Headline result | vs. paper |
 |---|---|---|---|
 | 1 | n=20, m=5, importance 0.7^i, S ∈ {0,…,0.999} | Features with ‖W_i‖>0.5 grow 5 → 13 as S goes 0 → 0.999; W^T W goes identity-block → antipodal pairs → dense | Matches qualitatively; fewer features than the paper at S=0.999 |
-| 2 | n=2, m=1 phase diagram, 30×30 grid, 3 seeds | See Phase 2 | See Phase 2 |
+| 2 | n=2, m=1 phase diagram, 30×30 grid, 3 seeds | Three regions as in the paper; empirical vs three-family theory agree on 0.86 of cells (0.94 where seeds are unanimous) | Matches; extra multi-stability and a same-sign solution family not in the paper's theory |
 | 3 | n=200, m=20, uniform importance, 40 sparsities × 3 seeds | Flat plateau at exactly 1/2 dims-per-feature for 1/(1−S) ∈ [2.3, 3.7]; 2/5 only a shoulder; no 3/4 or 2/3 | 1/2 plateau matches; higher-order polytopes do not |
 | 4 | |x| task, n=100, m=40 neurons | 40/40 neurons monosemantic at S=0, 0/40 at S=0.99; switch between S=0.9 and 0.97 | Matches |
 | 5 | SAE (dict 20) on the Phase 1 hidden activations | Recovers 9/9, 10/10, 10/11 true features at S=0.9/0.97/0.99 (cos>0.9); only 2/5 at S=0 (dense data not identifiable) | Extension; consistent with SAE premise |
@@ -76,7 +76,44 @@ I did not train longer to close the gap.
 
 ## Phase 2 — phase diagram (n=2, m=1)
 
-PHASE2_PLACEHOLDER
+![phase2](figures/phase2_phase_diagram.png)
+
+Two features, one hidden dimension. Feature 0 has importance 1; the x-axis is the importance of
+feature 1 relative to it (0.1–10, log), the y-axis the feature density 1−S (1 down to 0.01, log). 30×30
+grid, 3 seeds per cell (2700 models trained in one batch, 10k steps each), `results/phase2.json`.
+Each model is classified from its weights `W = [W_0, W_1]` with threshold 0.2: feature 1 *not
+represented* (|W_1| < 0.2), *dedicated dimension* (|W_0| < 0.2 ≤ |W_1|), or *superposition* (both ≥ 0.2).
+The right-most panel is the paper-style theoretical diagram: for every cell the best achievable loss
+within each of the three solution families `W ∝ [1,0]`, `[0,1]`, `[1,−1]` (scale and both biases free)
+is found by optimising on a fixed 20 000-sample Monte-Carlo estimate of the expected loss, and the
+cheapest family wins.
+
+| | not represented | dedicated | superposition |
+|---|---|---|---|
+| empirical (majority of 3 seeds), fraction of cells | 0.17 | 0.18 | 0.65 |
+| theory, fraction of cells | 0.12 | 0.12 | 0.76 |
+
+Agreement between the empirical majority and theory: **0.86** of cells (per seed
+0.86, 0.87, 0.86); on the 747 cells where all three seeds
+agree with each other, agreement with theory is 0.94.
+
+**Matches the paper.** Dense inputs give a sharp vertical boundary at relative importance 1: the
+single dimension goes to whichever feature matters more. Superposition opens as a wedge from
+importance ≈ 1 as density falls and, below density ≈ 0.1, covers nearly the whole importance range.
+The theory diagram has the same three regions with straight boundaries on log axes, as in the paper,
+and the two diagrams agree everywhere except near the boundaries.
+
+**Differs from the paper / caveats.** (i) The empirical diagram has speckled vertical stripes of
+single-feature solutions inside the superposition region, around relative importance 0.4–0.6 and
+its mirror 2–3. In those cells different seeds land in different local optima (17 % of all cells
+are not unanimous), and 26 % of all trained models end with a loss more than 1e-3 above the best
+family loss, so part of the disagreement is optimisation rather than the model's true preference.
+(ii) 13 % of trained models sit in a fourth kind of solution the three-family theory does not
+contain: both weights with the *same* sign (e.g. `W ≈ [1.05, 0.35]`) and a negative bias on the
+stronger feature. They are counted as "superposition" above. (iii) The first version of the theory
+computation initialised the biases at zero, where `ReLU(0)` has zero gradient, which under-rated the
+single-feature families (agreement 0.77); the log records the fix. The theory itself is a numerical
+optimisation on Monte-Carlo samples rather than the paper's closed-form expressions.
 
 ## Phase 3 — feature geometry
 

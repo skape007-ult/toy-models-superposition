@@ -184,3 +184,12 @@ truth features to score recovery against.
   disagree there (some find antipodal, some same-sign, some single-feature), which produces
   the speckled vertical stripes in the empirical diagram. The paper's three-family theory
   has no such family; this multi-stability is reported, not tuned away.
+
+### Phase 2 final result (17:02)
+- Theory rerun with the bias fix (584 s on MPS): theory fractions 12% / 12% / 76%; agreement
+  with the empirical majority 0.86 (0.94 on the 747 cells where all three seeds agree).
+- Remaining disagreement is at the boundaries and in the striped multi-stable band; 26% of
+  trained models have a loss >1e-3 above the best family's loss (mean gap 0.0019, max 0.023),
+  i.e. they are in a worse local optimum, and 13% of models are same-sign solutions.
+- Compared with the paper: the three regions and boundary shapes match; the stripes and the
+  same-sign family are not in the paper's figure.
