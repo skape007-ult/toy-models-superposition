@@ -56,7 +56,8 @@ def train(
     """
     device = torch.device(device) if device is not None else get_device()
     torch.manual_seed(seed)
-    gen = torch.Generator(device="cpu").manual_seed(seed)
+    # Sample data on-device: on MPS, CPU sampling + copy costs more than the model step.
+    gen = torch.Generator(device=device).manual_seed(seed)
     model = model if model is not None else ToyModel(cfg, device=device, seed=seed)
     importance = importance.to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -81,6 +82,7 @@ def train(
     info = {
         "steps": steps, "batch_size": batch_size, "lr": lr, "weight_decay": weight_decay,
         "seed": seed, "device": str(device), "seconds": time.time() - t0,
+        "schedule": "linear warmup 5% then cosine decay to 0",
         "final_loss": final, "history": history,
     }
     return model, info

@@ -56,12 +56,14 @@ def generate_batch(
 ) -> torch.Tensor:
     """Synthetic features: each x_i is 0 with prob S (per instance), else U[0,1].
 
-    `sparsity` has shape (I,) or (I, n). Sampling is done on CPU with the given
-    generator for reproducibility, then moved to `device`.
+    `sparsity` has shape (I,) or (I, n). Sampling happens on the generator's
+    device (CPU by default; pass an MPS generator to sample on-device, which
+    avoids a host->device copy that otherwise dominates step time).
     """
     shape = (batch_size, n_instances, n_features)
-    vals = torch.rand(shape, generator=generator)
-    mask = torch.rand(shape, generator=generator) >= sparsity.to("cpu").reshape(1, n_instances, -1)
+    gdev = generator.device if generator is not None else torch.device("cpu")
+    vals = torch.rand(shape, generator=generator, device=gdev)
+    mask = torch.rand(shape, generator=generator, device=gdev) >= sparsity.to(gdev).reshape(1, n_instances, -1)
     return (vals * mask).to(device)
 
 
