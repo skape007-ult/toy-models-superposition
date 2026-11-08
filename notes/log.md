@@ -193,3 +193,114 @@ truth features to score recovery against.
   i.e. they are in a worse local optimum, and 13% of models are same-sign solutions.
 - Compared with the paper: the three regions and boundary shapes match; the stripes and the
   same-sign family are not in the paper's figure.
+
+# Follow-up pass (branch exp/followup, worktree ../tms-followup)
+
+## 2026-11-08 17:34 — Item 1: definitions check
+What would change which claim: if D_i in tms/analysis.py did not sum over j = i, or if
+dims_per_feature were not m/||W||_F^2, every Phase 3 number (the 1/2 plateau, the per-feature
+bands, the histogram) and the Phase 1 "m/||W||_F^2" column would have to be recomputed and the
+README's Phase 3 "Matches" paragraph rewritten. Expectation from reading the code: the sum in
+feature_dimensionality runs over all j including i (the diagonal is not removed, unlike in
+superposition()), so an antipodal pair gives D = 1/2 and a regular pentagon in 2D gives 2/5.
+Result: both definitions are as stated; the diagonal term is included. New tests pass (antipodal
+1/2, pentagon 2/5, triangle 2/3, tetrahedron 3/4, lone feature 1; m/||W||_F^2 cases). No README
+change needed.
+
+## 2026-11-08 17:38 — Item 2: Phase 2 theory spot-check and the same-sign family
+What would change which claim: (a) if the theory's feature-0-only loss at density 1, r=0.16 is
+not r/24 = 0.00667 (mean over 2 features of r * Var(U[0,1]) = r/12), the theory diagram and the
+0.86 agreement number are wrong and would be recomputed. (b) For the same-sign models: if their
+trained loss is *below* the best three-family loss at the same cell, the theory misses a real
+solution and the README's "fourth kind of solution" claim becomes "a lower-loss solution the
+three-family theory misses"; if it is *above*, they are local minima and the README should say
+"a higher-loss local minimum", and the 0.86 disagreement is partly optimisation failure.
+Expectation: (a) holds within Monte-Carlo error (~1%). (b) I expect them to be higher-loss
+local minima, because at those cells other seeds found antipodal solutions and the mean loss
+gap over all models was already positive (0.0019).
+
+## 2026-11-08 17:36 — Item 3: Phase 1 S=0.999 convergence
+What would change which claim: README Phase 1 "Differs" says only 13-14 of 20 features clear
+the 0.5-norm threshold at S=0.999 and attributes it to too little gradient in 10k steps. If
+5x / 20x steps bring the count to ~20, the claim becomes "a convergence effect, resolved with
+longer training"; if the count stays at 13-14, the attribution is wrong and should be replaced
+by "the optimum under this importance/sparsity genuinely leaves the weakest features out".
+Expectation: the count rises with steps but may not reach 20 at 200k steps, because the
+importance of the last features (~1e-3) times their activity (1e-3) is ~1e-6 of the loss.
+Setup: scripts/phase1_convergence.py, S=0.999 only, 3 seeds, steps in {10k, 50k, 200k}, same
+optimiser/schedule (cosine over the full run), same thresholds as Phase 1.
+Result (results/phase2_samesign.json): 344 of 2700 trained models are same-sign solutions
+(relative importance 0.49-2.04, all densities). Their loss exceeds the best three-family loss
+in 93% of cases (median gap 0.0056, median relative gap 11.8x); in all 137 cells where another
+seed found a different solution, the same-sign one is worse. Verdict: higher-loss local
+minimum, not a solution the theory misses. README Phase 2 wording to change accordingly.
+The r/24 spot check passes (new test; theory family-0 loss at density 1, r=0.16 within 2% of
+0.00667, and the closed-form loss check on the model itself). Also: the three-family theory
+only ever beats the trained antipodal models by MC noise (median gap -7e-6).
+
+## 2026-11-08 17:37 — Item 4: Phase 3 convergence rerun around 1/(1-S) in [3, 12]
+What would change which claim: README Phase 3 says 2/5 is "a shoulder rather than a plateau"
+(1-2 consecutive points within +-0.02) and that there are "no clusters at 3/4 or 2/3". If, with
+5x steps and 5 seeds, the run within +-0.02 of 2/5 grows to >= 3 consecutive points, the
+"Partially matches" paragraph becomes "matches at 5x steps"; if 3/4 or 2/3 bands appear in the
+per-feature scatter, the "Differs" paragraph is withdrawn. If nothing changes, the first-pass
+wording stands and gains "robust to 5x longer training".
+Expectation: the 2/5 shoulder sharpens a little (the 1/2 plateau was already converged, std 0),
+but the 3/4 and 2/3 structures will not appear here because they belong to the transition
+1 -> 1/2 at 1/(1-S) in [1.4, 2], which is outside the requested [3, 12] window.
+Sizing (benchmark, MPS, n=200, m=20): 12 instances 0.020 s/step, 60 instances 0.086 s/step.
+Choice: 10 log-spaced points in [3, 12] x 5 seeds, 50k steps, one checkpointed chunk per seed
+(12 instances would be 17 min; 10 points ~14 min per chunk, ~70 min total, under the 90-min cap).
+
+## 2026-11-08 17:38 — Item 5: n=3, m=2 phase diagram (15x15, 3 seeds)
+What would change which claim: nothing in the README yet (this diagram is new); it adds a
+Phase 2 subsection. Setup: features 0 and 1 have importance 1, feature 2 has relative
+importance r in [0.1, 10] (x), density 1-S in [1, 0.01] (y), 15x15 grid, 3 seeds, 10k steps,
+CPU (MPS is busy with items 3-4). Classification of feature 2 by its weights: not represented
+(||W_2|| < 0.2); dedicated dimension (||W_2|| >= 0.2 and superposition measure
+sum_{j!=2}(W_2_hat . W_j)^2 < 0.1); superposition otherwise. No theory diagram for this one
+(the family enumeration is larger; noted as not done).
+Expectation from the paper's n=3, m=2 figure: dense + r < 1 -> feature 2 dropped (features 0, 1
+take the two dimensions); dense + r > 1 -> feature 2 dedicated and one of the equal features
+dropped (ties broken by seed); as sparsity grows, superposition appears first near r ~ 1 and
+then takes over, with triangle-like arrangements (three features in two dimensions, D_i = 2/3).
+
+### Item 3 result (17:56) — results/phase1_convergence.json
+- S=0.999, 3 seeds, features with ||W_i|| > 0.5: 10k steps [12, 13, 13]; 50k [16, 14, 13];
+  200k [13, 14, 14]. Features with ||W_i|| > 0.1: [17, 17, 16] -> [17, 17, 17] -> [19, 18, 18].
+  Final loss 1.23e-6 -> 1.08e-6 -> 1.01e-6.
+- So the count above 0.5 does NOT rise with 20x more steps; what rises is the number of weakly
+  represented features (norm 0.1-0.5). The first-pass attribution ("too little gradient in
+  10k steps") is not supported: under this importance decay the optimum (as far as 200k steps
+  reveal it) keeps the 6-7 least important features at partial norm. README Phase 1 "Differs"
+  paragraph to be rewritten accordingly; the 10k numbers stay visible.
+- Note the 10k baseline here ([12,13,13]) differs slightly from Phase 1's [13,13,14] because
+  the batch composition (3 instances of the same S) changes the per-instance init/data draw.
+
+### Item 5 result (17:57) — results/phase2_n3m2.json, figures/phase2_n3m2.png
+- 15x15 x 3 seeds, 10k steps, CPU, 1035 s. Majority classes for feature 2: not represented
+  15%, dedicated 33%, superposition 52%; only 55% of cells unanimous across seeds.
+- Dense region matches the expectation: r < 1 -> feature 2 dropped, r > 1 -> feature 2 takes a
+  dimension (one of the equal features dropped), boundary at r ~ 1.
+- Sparse region: NOT the triangle. Zero models have all D_i ~ 2/3. Instead 70% of all models
+  (95% of those at density < 0.1) are "antipodal pair + one orthogonal feature" (D = 1/2, 1/2, 1),
+  which under ReLU is interference-free. Which feature is the odd one out is seed-dependent, so
+  feature 2 is classified "dedicated" or "superposition" essentially at random in that region;
+  that is the speckle, not a failure of convergence. This is consistent with the paper's remark
+  that antipodal pairs carry no positive interference; the triangle (2/3) was my expectation,
+  not an observation reported for this exact setup.
+
+### Item 4 result (18:18) — results/phase3_convergence.json, figures/phase3_convergence.png
+- 10 points in 1/(1-S) in [3, 12] x 5 seeds, 50k steps, 2409 s on MPS (5 checkpointed chunks).
+- m/||W||_F^2 at 50k steps differs from the 10k first pass (interpolated) by -0.012 to +0.004;
+  seed-to-seed std <= 0.011. The curve is slightly *lower* (more superposition) at 50k.
+- Longest run of consecutive points within +-0.02 of 2/5, per seed: [0, 1, 1, 0, 0] (first pass: 1-2).
+  The 2/5 shoulder does not widen; it is, if anything, weaker. 3/8: [1, 1, 1, 1, 1], 1/3: [1, 1, 1, 1, 1] (single
+  crossings). 2/3 and 3/4: [0, 0, 0, 0, 0] / [0, 0, 0, 0, 0].
+- Per-feature bands (values within +-0.02 of the fraction, per 1000 feature values, in this window):
+  1/2: 48 (first pass 33), 2/5: 18 (20), 3/8: 23 (28), 1/3: 29 (41),
+  2/3: 0 (0), 3/4: 0 (0). At 1/(1-S) ~ 4.1 the scatter shows discrete bands at 0.5, 0.44, 0.40 and 0.36,
+  i.e. a mixture of digons and small polytopes rather than a single pentagon phase.
+- Conclusion: the first-pass Phase 3 wording stands and is robust to 5x longer training and 5 seeds;
+  the 2/5 plateau is not a convergence artefact of the first pass. README "Partially matches"
+  and "Differs" paragraphs get this appended; the original figure and numbers stay.

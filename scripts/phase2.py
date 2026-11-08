@@ -48,7 +48,7 @@ def empirical(device):
     return np.array(classes), np.array(Ws), np.array(bs), np.array(losses)
 
 
-def theoretical(n_samples=20_000, steps=1500, device=None):
+def theoretical(n_samples=20_000, steps=1500, device=None, rel_importance=None, density=None):
     """Best loss per family per cell, by optimising (a, b0, b1) on a fixed MC sample.
 
     Biases start at +0.1, not 0: with b = 0 the output of an unrepresented feature is
@@ -58,8 +58,11 @@ def theoretical(n_samples=20_000, steps=1500, device=None):
     device = torch.device(device) if device is not None else get_device()
     torch.manual_seed(0)
     g = torch.Generator(device=device).manual_seed(123)
-    cells = [(r, d) for d in DENSITY for r in REL_IMPORTANCE]
+    rel_importance = REL_IMPORTANCE if rel_importance is None else np.asarray(rel_importance)
+    density = DENSITY if density is None else np.asarray(density)
+    cells = [(r, d) for d in density for r in rel_importance]
     I = len(cells)
+    G = (len(density), len(rel_importance))
     imp = torch.tensor([[1.0, r] for r, _ in cells], dtype=torch.float32, device=device)  # (I, 2)
     dens = torch.tensor([d for _, d in cells], dtype=torch.float32, device=device)  # (I,)
     x = torch.rand(n_samples, I, 2, generator=g, device=device) * (torch.rand(n_samples, I, 2, generator=g, device=device) < dens[None, :, None])
@@ -78,7 +81,7 @@ def theoretical(n_samples=20_000, steps=1500, device=None):
         best.append(loss_i.detach().cpu())
         print(f"  family {fd.tolist()} done", flush=True)
     best = torch.stack(best, 0)  # (3, I)
-    return best.argmin(0).numpy().reshape(GRID, GRID), best.numpy().reshape(3, GRID, GRID)
+    return best.argmin(0).numpy().reshape(*G), best.numpy().reshape(3, *G)
 
 
 def main():

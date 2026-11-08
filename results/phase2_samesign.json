@@ -1,0 +1,41 @@
+{
+ "same_sign": {
+  "n_models": 344,
+  "gap_mean": 0.008109649920956943,
+  "gap_median": 0.005591578008439494,
+  "gap_min": -0.0010968937197616685,
+  "frac_gap_above_1e-3": 0.9331395348837209,
+  "frac_gap_below_minus_1e-4": 0.014534883720930232,
+  "relative_gap_median": 11.839556253755518
+ },
+ "antipodal": {
+  "n_models": 1402,
+  "gap_mean": 3.0446953913128222e-05,
+  "gap_median": -6.830917568324363e-06,
+  "gap_min": -0.005219369891586542,
+  "frac_gap_above_1e-3": 0.0449358059914408,
+  "frac_gap_below_minus_1e-4": 0.2888730385164051,
+  "relative_gap_median": -0.026492800256629673
+ },
+ "single_feature": {
+  "n_models": 954,
+  "gap_mean": 0.00230411998310176,
+  "gap_median": 0.000254726049263544,
+  "gap_min": -0.0025009826693386666,
+  "frac_gap_above_1e-3": 0.33542976939203356,
+  "frac_gap_below_minus_1e-4": 0.1970649895178197,
+  "relative_gap_median": 0.010628983314548587
+ },
+ "cells_with_same_sign_and_other_solution": 137,
+ "cells_where_same_sign_is_worse": 137,
+ "same_sign_rel_importance_range": [
+  0.4893900918477494,
+  2.0433597178569416
+ ],
+ "same_sign_density_range": [
+  0.01,
+  1.0
+ ],
+ "verdict": "higher-loss local minimum",
+ "note": "gap = trained final loss (8192 fresh samples) minus best of the 3 theory families (20k MC samples) at the same cell"
+}

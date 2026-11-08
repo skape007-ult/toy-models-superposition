@@ -10,9 +10,9 @@ Interactive view of the Phase 1 and Phase 3 results: [docs/index.html](docs/inde
 
 | Phase | What | Headline result | vs. paper |
 |---|---|---|---|
-| 1 | n=20, m=5, importance 0.7^i, S ∈ {0,…,0.999} | Features with ‖W_i‖>0.5 grow 5 → 13 as S goes 0 → 0.999; W^T W goes identity-block → antipodal pairs → dense | Matches qualitatively; fewer features than the paper at S=0.999 |
-| 2 | n=2, m=1 phase diagram, 30×30 grid, 3 seeds | Three regions as in the paper; empirical vs three-family theory agree on 0.86 of cells (0.94 where seeds are unanimous) | Matches; extra multi-stability and a same-sign solution family not in the paper's theory |
-| 3 | n=200, m=20, uniform importance, 40 sparsities × 3 seeds | Flat plateau at exactly 1/2 dims-per-feature for 1/(1−S) ∈ [2.3, 3.7]; 2/5 only a shoulder; no 3/4 or 2/3 | 1/2 plateau matches; higher-order polytopes do not |
+| 1 | n=20, m=5, importance 0.7^i, S ∈ {0,…,0.999} | Features with ‖W_i‖>0.5 grow 5 → 13 as S goes 0 → 0.999; W^T W goes identity-block → antipodal pairs → dense | Matches qualitatively; fewer features than the paper at S=0.999, and 20× more steps does not change that |
+| 2 | n=2, m=1 phase diagram, 30×30 grid, 3 seeds (+ n=3, m=2 at 15×15) | Three regions as in the paper; empirical vs three-family theory agree on 0.86 of cells (0.94 where seeds are unanimous). n=3, m=2: antipodal pair + orthogonal feature, no triangles | Matches; the extra same-sign solutions are higher-loss local minima |
+| 3 | n=200, m=20, uniform importance, 40 sparsities × 3 seeds | Flat plateau at exactly 1/2 dims-per-feature for 1/(1−S) ∈ [2.3, 3.7]; 2/5 only a shoulder; no 3/4 or 2/3. Unchanged at 5× steps, 5 seeds | 1/2 plateau matches; higher-order polytopes do not, and that is not a convergence artefact |
 | 4 | |x| task, n=100, m=40 neurons | 40/40 neurons monosemantic at S=0, 0/40 at S=0.99; switch between S=0.9 and 0.97 | Matches |
 | 5 | SAE (dict 20) on the Phase 1 hidden activations | Recovers 9/9, 10/10, 10/11 true features at S=0.9/0.97/0.99 (cos>0.9); only 2/5 at S=0 (dense data not identifiable) | Extension; consistent with SAE premise |
 
@@ -70,9 +70,25 @@ densely; biases of superposed features go negative, as the paper explains (the n
 suppresses interference).
 
 **Differs from the paper.** At S=0.999 only 13–14 of 20 features clear the 0.5-norm threshold; the
-paper's figure shows nearly all 20. The least important features have importance 0.7^14…0.7^19 ≈
-0.007…0.001 and are active in about one sample per batch, so 10k steps give them very little gradient.
-I did not train longer to close the gap.
+paper's figure shows nearly all 20. The first pass attributed this to too little gradient in 10k
+steps. **Follow-up (convergence check, `results/phase1_convergence.json`, figure below):** rerunning
+S=0.999 with 5× and 20× the steps does not change it.
+
+| steps | features with ‖W_i‖ > 0.5 (3 seeds) | with ‖W_i‖ > 0.1 | mean loss |
+|---|---|---|---|
+| 10 000 | 12, 13, 13 | 17, 17, 16 | 1.23e-06 |
+| 50 000 | 16, 14, 13 | 17, 17, 17 | 1.08e-06 |
+| 200 000 | 13, 14, 14 | 19, 18, 18 | 1.01e-06 |
+
+The number of fully represented features stays at 13–14; what grows slowly is the number of
+*weakly* represented ones (norm between 0.1 and 0.5), and the loss falls by 18 %. So the
+shortfall is not a 10k-step artefact: with importance 0.7^i the six or seven least important
+features (importance below 0.01) are kept at partial norm. The difference from the paper's panel
+therefore more likely comes from a different importance curve or threshold convention than from
+under-training. (The 10k baseline in this rerun differs by one feature from the Phase 1 run
+because the batch composition changes the per-instance draw.)
+
+![phase1 convergence](figures/phase1_convergence.png)
 
 ## Phase 2 — phase diagram (n=2, m=1)
 
@@ -108,12 +124,34 @@ single-feature solutions inside the superposition region, around relative import
 its mirror 2–3. In those cells different seeds land in different local optima (17 % of all cells
 are not unanimous), and 26 % of all trained models end with a loss more than 1e-3 above the best
 family loss, so part of the disagreement is optimisation rather than the model's true preference.
-(ii) 13 % of trained models sit in a fourth kind of solution the three-family theory does not
-contain: both weights with the *same* sign (e.g. `W ≈ [1.05, 0.35]`) and a negative bias on the
-stronger feature. They are counted as "superposition" above. (iii) The first version of the theory
+(ii) 13 % of trained models (344 of 2700) sit in a same-sign solution: both weights with the
+*same* sign (e.g. `W ≈ [1.05, 0.35]`) and a negative bias on the stronger feature. They are counted
+as "superposition" above. **Follow-up check** (`results/phase2_samesign.json`): these are higher-loss
+local minima, not a solution the three-family theory misses. Their loss is above the best family
+loss at the same cell in 93 % of cases (median gap 0.0056, median 12× the optimum), and in all
+137 cells where another seed found a different solution the same-sign one is worse. By
+contrast the trained antipodal models match the theory to Monte-Carlo noise (median gap
+-7e-06). (iii) The first version of the theory
 computation initialised the biases at zero, where `ReLU(0)` has zero gradient, which under-rated the
-single-feature families (agreement 0.77); the log records the fix. The theory itself is a numerical
+single-feature families (agreement 0.77); the log records the fix, and a unit test now pins the
+feature-0-only loss at density 1, relative importance 0.16 to r/24. The theory itself is a numerical
 optimisation on Monte-Carlo samples rather than the paper's closed-form expressions.
+
+### n=3, m=2 (follow-up, 15×15 grid, 3 seeds)
+
+![phase2 n3m2](figures/phase2_n3m2.png)
+
+Features 0 and 1 have importance 1, feature 2 has relative importance r (x-axis); same density axis
+and thresholds as above, plus a dedicated-dimension test (feature 2 represented with superposition
+measure < 0.1). `results/phase2_n3m2.json`; no theory diagram for this case.
+
+Dense region as expected: feature 2 is dropped for r < 1 and takes one of the two dimensions for
+r > 1 (one of the equal features is dropped instead). The sparse region is not a triangle: no model
+has all three features at D_i ≈ 2/3. Instead 70 % of all models, and 95 % of those at density
+below 0.1, are an antipodal pair plus one orthogonal feature (D_i = ½, ½, 1), which under ReLU has
+no positive interference. Which feature is the odd one out depends on the seed, so feature 2 is
+labelled "dedicated" or "superposition" essentially at random there (only 55 % of cells are
+unanimous across seeds); the speckle in the figure is this degeneracy, not non-convergence.
 
 ## Phase 3 — feature geometry
 
@@ -144,6 +182,18 @@ transition from 1 to 1/2 passes straight through them (single-digit histogram co
 20-dimensional subspace is an equally good solution and the model does not single out 20 features;
 (ii) at the sparse end all 200 features are represented with norms above 1, so `m/‖W‖²_F` falls to
 0.066. The paper's x-axis also stops at 100 and its curve likewise keeps falling.
+
+**Follow-up (convergence check, `results/phase3_convergence.json`).** Rerunning 1/(1−S) ∈ [3, 12]
+(10 points) with 5× the steps and 5 seeds leaves the curve where it was: `m/‖W‖²_F` moves by
+-0.012 to +0.004 relative to the 10k run (slightly more superposition), with seed-to-seed std ≤ 0.011.
+The longest run of consecutive sweep points within ±0.02 of 2/5 is 1 (first pass 1–2), so the
+shoulder does not become a plateau with longer training. No per-feature values fall within ±0.02 of
+2/3 or 3/4 in either run. Per 1000 feature values in this window, the 1/2 band holds 48 (first pass
+33), the 2/5 band 18 (20). Around 1/(1−S) ≈ 4 the scatter splits into discrete bands at 0.50,
+0.44, 0.40 and 0.36, a mixture of digons and small polytopes rather than one pentagon phase. The
+first-pass figure and numbers above are kept; the rerun is shown separately.
+
+![phase3 convergence](figures/phase3_convergence.png)
 
 ## Phase 4 — computation in superposition (absolute value)
 
@@ -203,8 +253,9 @@ SAE find the true basis.
 - Loss is averaged over features rather than summed (constant rescaling for fixed n; Adam is scale invariant).
 - Training data is sampled on the training device with a seeded device generator, so CPU and MPS runs
   are each reproducible but do not see identical data streams. The benchmark compares them on identical CPU-sampled data.
-- 10k steps for every phase. The Phase 1 S=0.999 shortfall and possibly the missing high-order
-  polytopes in Phase 3 may be convergence effects; neither was investigated by training longer.
+- 10k steps for every phase in the first pass. Follow-up runs at 5× (Phase 3) and 5×/20× (Phase 1,
+  S=0.999) did not change the Phase 1 count or the Phase 3 plateau structure, so neither is a
+  10k-step convergence effect as far as these runs show.
 - Phase 3 uses n=200, m=20; the paper's figure uses a comparable but not identical configuration, and
   the exact numeric plateau extents are not expected to transfer.
 - Phase 4 importance base (0.8) is an assumption. Phase 2 thresholds (|W| < 0.2) and Phase 1/5

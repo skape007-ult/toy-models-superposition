@@ -72,3 +72,66 @@ def test_dense_model_learns_top_m_features():
         assert norms[i, :m].min() > 0.95 and norms[i, m:].max() < 0.1, norms[i]
         # Dense regime: the learned features should be close to orthogonal (little superposition).
         assert superposition(model.W)[i, :m].max() < 0.05
+
+
+def _regular_polygon(k, dims=2):
+    ang = 2 * np.pi * np.arange(k) / k
+    W = np.zeros((1, k, dims))
+    W[0, :, 0], W[0, :, 1] = np.cos(ang), np.sin(ang)
+    return W
+
+
+def test_feature_dimensionality_definition():
+    """D_i = ||W_i||^2 / sum_j (W_i_hat . W_j)^2 with j running over ALL features, including i."""
+    # Antipodal pair in 1 dim: each feature shares the dimension with its mirror -> 1/2 each.
+    W = np.array([[[1.0], [-1.0]]])
+    assert np.allclose(feature_dimensionality(W), [[0.5, 0.5]])
+    # Regular pentagon in 2 dims: 5 features in 2 dims -> 2/5 each.
+    assert np.allclose(feature_dimensionality(_regular_polygon(5)), 0.4)
+    # Regular triangle in 2 dims -> 2/3; tetrahedron (4 unit vectors in 3 dims) -> 3/4.
+    assert np.allclose(feature_dimensionality(_regular_polygon(3)), 2 / 3)
+    tet = np.array([[[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]], dtype=float) / np.sqrt(3)
+    assert np.allclose(feature_dimensionality(tet), 0.75)
+    # Scale invariance of the direction part: scaling all of W by c scales D_i by 1 (ratio of c^2 terms).
+    assert np.allclose(feature_dimensionality(2.0 * _regular_polygon(5)), 0.4)
+    # The sum must include j = i: dropping it would give 1/(sum_{j!=i}) which for a lone unit
+    # feature is infinite; the definition gives exactly 1.
+    assert np.allclose(feature_dimensionality(np.array([[[0.0, 1.0]]])), [[1.0]])
+
+
+def test_dims_per_feature_definition():
+    """dimensions per feature = m / ||W||_F^2, per instance."""
+    W = np.array([[[1.0], [-1.0]]])            # m=1, ||W||_F^2 = 2 -> 1/2
+    assert np.allclose(dims_per_feature(W), [0.5])
+    assert np.allclose(dims_per_feature(_regular_polygon(5)), [2 / 5])
+    assert np.allclose(dims_per_feature(_regular_polygon(3)), [2 / 3])
+    W = np.zeros((1, 6, 3)); W[0, :3] = np.eye(3)   # 3 orthonormal features, 3 dropped -> 1
+    assert np.allclose(dims_per_feature(W), [1.0])
+    # Unlike D_i, it is NOT scale invariant: doubling W quarters it.
+    assert np.allclose(dims_per_feature(2 * _regular_polygon(5)), [0.1])
+
+
+def test_phase2_theory_single_feature_loss_is_r_over_24():
+    """Dense inputs (density 1), feature 1 with relative importance r = 0.16: the best 'feature 0
+    only' solution reconstructs x0 exactly and predicts the constant E[x1] = 1/2 for x1, so its
+    loss under the code's mean-over-features convention is r * Var(U[0,1]) / 2 = r / 24."""
+    import importlib.util, sys
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location("phase2", Path(__file__).resolve().parent.parent / "scripts" / "phase2.py")
+    phase2 = importlib.util.module_from_spec(spec)
+    sys.argv = ["phase2.py"]
+    spec.loader.exec_module(phase2)
+    r = 0.16
+    cls, fam = phase2.theoretical(n_samples=20_000, steps=1500, device="cpu", rel_importance=[r], density=[1.0])
+    feature0_only = fam[0, 0, 0]
+    assert math.isclose(feature0_only, r / 24, rel_tol=0.02), (feature0_only, r / 24)
+    # Dense + feature 1 unimportant: dropping feature 1 should be the predicted phase.
+    assert cls[0, 0] == 0
+    # And the closed-form check of the loss function itself, without any optimisation:
+    cfg = Config(n_features=2, n_hidden=1, n_instances=1)
+    model = ToyModel(cfg, seed=0)
+    with torch.no_grad():
+        model.W[:] = torch.tensor([[[1.0], [0.0]]]); model.b[:] = torch.tensor([[0.0, 0.5]])
+    x = generate_batch(200_000, 1, 2, torch.zeros(1), torch.Generator().manual_seed(0))
+    loss = weighted_mse(x, model(x), torch.tensor([[1.0, r]])).item()
+    assert math.isclose(loss, r / 24, rel_tol=0.02), loss

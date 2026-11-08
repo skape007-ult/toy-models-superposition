@@ -16,8 +16,15 @@ Status key: [x] done, [~] in progress, [ ] next.
 How to resume: `source .venv/bin/activate && pytest -q`, then run the next unchecked
 script under scripts/ (each is idempotent / checkpointed; see notes/log.md for context).
 
+## Follow-up pass (branch exp/followup)
+- [x] Item 1: definition tests (tests/test_core.py) — no README change
+- [x] Item 2: r/24 test; same-sign family = higher-loss local minimum (results/phase2_samesign.json); README updated
+- [x] Item 3: Phase 1 S=0.999 at 10k/50k/200k (results/phase1_convergence.json, figures/phase1_convergence.png); README updated
+- [x] Item 4: Phase 3 convergence rerun (results/phase3_convergence.json, figures/phase3_convergence.png); README updated
+- [x] Item 5: n=3, m=2 15x15 (results/phase2_n3m2.json, figures/phase2_n3m2.png); README updated
+- [ ] Open PR, merge gate
+
 ## Possible next steps (not started)
-- Phase 2 for n=3, m=2 (needs a classification scheme for the third feature and a theory with more families).
-- Train Phase 1 at S=0.999 longer (or with larger batch) to test whether the missing least-important features appear.
-- Add the same-sign solution family to the Phase 2 theory and see whether agreement rises.
-- Phase 3 at the paper's larger size (e.g. n=400, m=30) and denser sampling around 1/(1-S) in [4, 8] to look for the 2/5 plateau.
+- Theory diagram for n=3, m=2 (needs enumeration of more solution families).
+- Phase 1 at S=0.999 with a different importance curve (e.g. 0.9^i) to see whether all 20 features appear, as a check on the attribution in the README.
+- Phase 3 at the paper's larger size (e.g. n=400, m=30); the 2/5 shoulder did not widen with 5x steps at n=200, m=20, so size is the remaining variable.
