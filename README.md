@@ -3,7 +3,7 @@
 A from-scratch reproduction of Elhage et al. (2022), *Toy Models of Superposition*
 ([transformer-circuits.pub/2022/toy_model](https://transformer-circuits.pub/2022/toy_model/index.html)),
 in PyTorch on an Apple M3 laptop. Every number below is read from `results/*.json`, every figure is
-produced by a script in `scripts/`, and `scripts/run_all.sh` regenerates all of it (about one hour).
+produced by a script in `scripts/`, and `scripts/run_all.sh` regenerates all of it (about 90 minutes on an M3).
 Interactive view of the Phase 1 and Phase 3 results: [docs/index.html](docs/index.html) (static, no CDNs).
 
 ## Summary
@@ -17,8 +17,8 @@ Interactive view of the Phase 1 and Phase 3 results: [docs/index.html](docs/inde
 | 5 | SAE (dict 20) on the Phase 1 hidden activations | Recovers 9/9, 10/10, 10/11 true features at S=0.9/0.97/0.99 (cos>0.9); only 2/5 at S=0 (dense data not identifiable) | Extension; consistent with SAE premise |
 
 Compute: MPS was chosen over CPU after a benchmark on identical data (loss trajectories agree to
-1e-7 relative; 5.8 vs 3.3 steps/s on the Phase 3 config). Total training time for all phases is
-under 45 minutes.
+1e-7 relative; 5.8 vs 3.3 steps/s on the Phase 3 config). Wall-clock for all phases is about 79 minutes, of which Phase 2 (2700 tiny models on
+CPU plus the Monte-Carlo theory step) is 58.
 
 ## Reproduction
 
