@@ -49117,6 +49117,172 @@
   "3/8": 5,
   "1/3": 4
  },
+ "plateau_runs": {
+  "1": [
+   {
+    "seed": 0,
+    "length": 4,
+    "inv_density_range": [
+     1.0,
+     1.425102670302998
+    ]
+   },
+   {
+    "seed": 1,
+    "length": 4,
+    "inv_density_range": [
+     1.0,
+     1.425102670302998
+    ]
+   },
+   {
+    "seed": 2,
+    "length": 4,
+    "inv_density_range": [
+     1.0,
+     1.425102670302998
+    ]
+   }
+  ],
+  "3/4": [
+   {
+    "seed": 0,
+    "length": 0,
+    "inv_density_range": null
+   },
+   {
+    "seed": 1,
+    "length": 0,
+    "inv_density_range": null
+   },
+   {
+    "seed": 2,
+    "length": 0,
+    "inv_density_range": null
+   }
+  ],
+  "2/3": [
+   {
+    "seed": 0,
+    "length": 0,
+    "inv_density_range": null
+   },
+   {
+    "seed": 1,
+    "length": 0,
+    "inv_density_range": null
+   },
+   {
+    "seed": 2,
+    "length": 0,
+    "inv_density_range": null
+   }
+  ],
+  "1/2": [
+   {
+    "seed": 0,
+    "length": 5,
+    "inv_density_range": [
+     2.2854638641349903,
+     3.665241237079628
+    ]
+   },
+   {
+    "seed": 1,
+    "length": 5,
+    "inv_density_range": [
+     2.2854638641349903,
+     3.665241237079628
+    ]
+   },
+   {
+    "seed": 2,
+    "length": 5,
+    "inv_density_range": [
+     2.2854638641349903,
+     3.665241237079628
+    ]
+   }
+  ],
+  "2/5": [
+   {
+    "seed": 0,
+    "length": 1,
+    "inv_density_range": [
+     4.641588833612778,
+     4.641588833612778
+    ]
+   },
+   {
+    "seed": 1,
+    "length": 1,
+    "inv_density_range": [
+     4.641588833612778,
+     4.641588833612778
+    ]
+   },
+   {
+    "seed": 2,
+    "length": 2,
+    "inv_density_range": [
+     4.1246263829013525,
+     4.641588833612778
+    ]
+   }
+  ],
+  "3/8": [
+   {
+    "seed": 0,
+    "length": 1,
+    "inv_density_range": [
+     4.641588833612778,
+     4.641588833612778
+    ]
+   },
+   {
+    "seed": 1,
+    "length": 2,
+    "inv_density_range": [
+     4.641588833612778,
+     5.223345074266842
+    ]
+   },
+   {
+    "seed": 2,
+    "length": 2,
+    "inv_density_range": [
+     4.641588833612778,
+     5.223345074266842
+    ]
+   }
+  ],
+  "1/3": [
+   {
+    "seed": 0,
+    "length": 2,
+    "inv_density_range": [
+     5.223345074266842,
+     5.878016072274912
+    ]
+   },
+   {
+    "seed": 1,
+    "length": 1,
+    "inv_density_range": [
+     5.878016072274912,
+     5.878016072274912
+    ]
+   },
+   {
+    "seed": 2,
+    "length": 1,
+    "inv_density_range": [
+     5.878016072274912,
+     5.878016072274912
+    ]
+   }
+  ]
+ },
  "dims_per_feature_mean_over_seeds": [
   1.001421848932902,
   1.0013724168141682,

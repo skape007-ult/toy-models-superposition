@@ -58,6 +58,26 @@ def merge():
     dpf = np.array([r["dims_per_feature"] for r in recs])  # (seeds, points)
     targets = {"1": 1.0, "3/4": 0.75, "2/3": 2 / 3, "1/2": 0.5, "2/5": 0.4, "3/8": 0.375, "1/3": 1 / 3}
     out["plateau_counts_within_0.02"] = {k: int((np.abs(dpf - v) < 0.02).sum()) for k, v in targets.items()}
+    # Longest run of consecutive sweep points within +-0.02 of each target, per seed (plateau length).
+    runs_out = {}
+    for k, v in targets.items():
+        runs = []
+        for si, row in enumerate(dpf):
+            m = np.abs(row - v) < 0.02
+            best, cur, start = (0, None, None), 0, 0
+            for i, flag in enumerate(m):
+                if flag:
+                    if cur == 0:
+                        start = i
+                    cur += 1
+                    if cur > best[0]:
+                        best = (cur, start, i)
+                else:
+                    cur = 0
+            runs.append({"seed": SEEDS[si], "length": best[0],
+                         "inv_density_range": [float(INV_DENSITY[best[1]]), float(INV_DENSITY[best[2]])] if best[0] else None})
+        runs_out[k] = runs
+    out["plateau_runs"] = runs_out
     out["dims_per_feature_mean_over_seeds"] = dpf.mean(0).tolist()
     out["dims_per_feature_std_over_seeds"] = dpf.std(0).tolist()
     # Histogram of per-feature dimensionality across the whole sweep, to see spikes at 1/2, 2/5 ...

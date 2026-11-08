@@ -146,3 +146,13 @@ truth features to score recovery against.
 - Precision (fraction of live dictionary elements aligned with a true feature) peaks at
   0.83-0.85: the dictionary has 20 slots but only 9-11 true features are present, and the
   extra live elements split or duplicate features.
+
+## 2026-11-08 16:30 — Docs site and Pages
+- docs/index.html is a single self-contained page (canvas drawing, no CDNs) reading docs/data.js,
+  which scripts/export_docs.py writes from results/phase1.json and results/phase3.json.
+- GitHub Pages enabled via the API with build_type=workflow; .github/workflows/pages.yml deploys
+  docs/ on pushes touching docs/** (first run failed only because Pages was not yet enabled;
+  re-dispatched manually).
+- Dead end: the in-app browser preview could not open localhost (navigation denied) and node is not
+  installed, so the page was checked for data presence and by reading the code, not visually in a
+  browser from this session. Flagged in README limitations and in the hand-verification list.
