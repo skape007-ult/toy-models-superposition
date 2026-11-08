@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toy Models of Superposition — reproduction</title>
+<style>
+  :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --line:#ddd; --accent:#1f77b4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141414; --fg:#eee; --muted:#aaa; --line:#333; } }
+  body { margin:0; padding:24px 16px; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width:1000px; margin-inline:auto; }
+  h1 { font-size:24px; margin:0 0 4px; } h2 { font-size:18px; margin:32px 0 8px; }
+  p.sub { color:var(--muted); margin:0 0 20px; }
+  .ctl { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:12px 0; }
+  input[type=range] { width:min(420px, 90vw); }
+  .panels { display:grid; grid-template-columns: 1fr 1fr; gap:24px; }
+  @media (max-width:700px) { .panels { grid-template-columns:1fr; } }
+  canvas { width:100%; height:auto; border:1px solid var(--line); background:var(--bg); }
+  .stat { font-variant-numeric: tabular-nums; color:var(--muted); font-size:13px; }
+  code { background:rgba(127,127,127,.15); padding:1px 4px; border-radius:3px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<h1>Toy Models of Superposition — reproduction</h1>
+<p class="sub">Interactive view of precomputed results (no network calls; data is embedded in <code>data.js</code>).
+Source and write-up: <a href="https://github.com/skape007-ult/toy-models-superposition">github.com/skape007-ult/toy-models-superposition</a>.
+Paper: Elhage et al. 2022, <a href="https://transformer-circuits.pub/2022/toy_model/index.html">transformer-circuits.pub/2022/toy_model</a>.</p>
+
+<h2>1. Basic superposition (n = 20 features, m = 5 hidden dims, importance 0.7<sup>i</sup>)</h2>
+<div class="ctl">
+  <label for="s1">sparsity S</label>
+  <input type="range" id="s1" min="0" max="5" step="1" value="0">
+  <span id="s1v" class="stat"></span>
+</div>
+<div class="panels">
+  <div><canvas id="gram" width="420" height="460"></canvas><div class="stat">WᵀW (blue positive, red negative) and bias b (bottom strip)</div></div>
+  <div><canvas id="bars" width="420" height="460"></canvas><div class="stat">‖W<sub>i</sub>‖ per feature, most important at top; colour = superposition Σ<sub>j≠i</sub>(Ŵ<sub>i</sub>·W<sub>j</sub>)² (black 0 → gold 1)</div></div>
+</div>
+
+<h2 id="p3h">3. Feature geometry (n = 200, m = 20, uniform importance)</h2>
+<div id="p3">
+<div class="ctl">
+  <label for="s3">1 / (1 − S)</label>
+  <input type="range" id="s3" min="0" max="39" step="1" value="0">
+  <span id="s3v" class="stat"></span>
+</div>
+<div class="panels">
+  <div><canvas id="dpf" width="420" height="320"></canvas><div class="stat">dimensions per feature m/‖W‖²<sub>F</sub> (mean ± std over 3 seeds); dashed lines at 1, 3/4, 2/3, 1/2, 2/5, 3/8, 1/3; marker = slider position</div></div>
+  <div><canvas id="fdh" width="420" height="320"></canvas><div class="stat">histogram of per-feature dimensionality D<sub>i</sub> at the selected sparsity (seed 0)</div></div>
+</div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  const D = window.TMS_DATA; const P1 = D.phase1;
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  function rdbu(v){ // v in [-1,1]
+    v = Math.max(-1, Math.min(1, v));
+    const t = Math.abs(v); const a = Math.round(255*(1-t));
+    return v >= 0 ? `rgb(${a},${Math.round(255-150*t)},255)` : `rgb(255,${a},${a})`;
+  }
+  function gold(t){ t = Math.max(0, Math.min(1, t)); const r=Math.round(17+(242-17)*t), g=Math.round(17+(177-17)*t), b=Math.round(17+(52-17)*t); return `rgb(${r},${g},${b})`; }
+  function drawGram(k){
+    const c = document.getElementById('gram'), ctx = c.getContext('2d'); const n = P1.n;
+    ctx.clearRect(0,0,c.width,c.height); const cell = (c.width-20)/n;
+    const G = P1.gram[k];
+    for (let i=0;i<n;i++) for (let j=0;j<n;j++){ ctx.fillStyle = rdbu(G[i][j]); ctx.fillRect(10+j*cell, 10+i*cell, cell+0.5, cell+0.5); }
+    const y0 = 10 + n*cell + 12;
+    for (let j=0;j<n;j++){ ctx.fillStyle = rdbu(P1.bias[k][j]); ctx.fillRect(10+j*cell, y0, cell+0.5, 14); }
+    ctx.strokeStyle = css('--line'); ctx.strokeRect(10,10,n*cell,n*cell); ctx.strokeRect(10,y0,n*cell,14);
+  }
+  function drawBars(k){
+    const c = document.getElementById('bars'), ctx = c.getContext('2d'); const n = P1.n;
+    ctx.clearRect(0,0,c.width,c.height); const h = (c.height-40)/n; const x0 = 70, wmax = c.width - x0 - 20;
+    ctx.fillStyle = css('--muted'); ctx.font = '11px sans-serif';
+    for (let i=0;i<n;i++){
+      const v = P1.norms[k][i]; ctx.fillStyle = gold(P1.superposition[k][i]);
+      ctx.fillRect(x0, 10+i*h+1, Math.min(v,1.3)/1.3*wmax, h-2);
+      ctx.fillStyle = css('--muted'); ctx.fillText('I='+(Math.pow(0.7,i)).toFixed(3), 4, 10+i*h+h*0.75);
+    }
+    ctx.strokeStyle = css('--line'); ctx.beginPath(); const x1 = x0 + wmax/1.3; ctx.moveTo(x1,10); ctx.lineTo(x1,10+n*h); ctx.stroke();
+    ctx.fillStyle = css('--muted'); ctx.fillText('‖W_i‖ = 1', x1-26, c.height-8);
+  }
+  function upd1(){ const k = +document.getElementById('s1').value; const S = P1.sparsities[k];
+    document.getElementById('s1v').textContent = `S = ${S}   (1/(1−S) = ${(1/(1-S)).toPrecision(3)}),  loss ${P1.loss[k].toExponential(2)},  features with ‖W_i‖>0.5: ${P1.n_represented[k]}`;
+    drawGram(k); drawBars(k); }
+  document.getElementById('s1').addEventListener('input', upd1); upd1();
+
+  const P3 = D.phase3;
+  if (!P3) { document.getElementById('p3').innerHTML = '<p class="stat">Phase 3 data not exported yet.</p>'; return; }
+  const lines = [[1,'1'],[0.75,'3/4'],[2/3,'2/3'],[0.5,'1/2'],[0.4,'2/5'],[0.375,'3/8'],[1/3,'1/3']];
+  function drawDpf(k){
+    const c = document.getElementById('dpf'), ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+    const L=44, R=40, T=12, B=36, W=c.width-L-R, H=c.height-T-B;
+    const xs = P3.inv_density.map(v => L + Math.log10(v)/2*W), ys = v => T + (1.1 - v)/1.1*H;
+    ctx.font='10px sans-serif';
+    lines.forEach(([v,lab]) => { ctx.strokeStyle='#999'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(L,ys(v)); ctx.lineTo(L+W,ys(v)); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle=css('--muted'); ctx.fillText(lab, L+W+4, ys(v)+3); });
+    ctx.strokeStyle = css('--accent'); ctx.lineWidth=1.5; ctx.beginPath();
+    xs.forEach((x,i)=>{ const y=ys(P3.dpf_mean[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); ctx.lineWidth=1;
+    ctx.fillStyle = css('--accent');
+    xs.forEach((x,i)=>{ const s=P3.dpf_std[i]; ctx.fillRect(x-0.5, ys(P3.dpf_mean[i]+s), 1, Math.max(1,(ys(P3.dpf_mean[i]-s)-ys(P3.dpf_mean[i]+s)))); ctx.beginPath(); ctx.arc(x, ys(P3.dpf_mean[i]), 2.2, 0, 6.3); ctx.fill(); });
+    ctx.strokeStyle='#d62728'; ctx.beginPath(); ctx.moveTo(xs[k],T); ctx.lineTo(xs[k],T+H); ctx.stroke();
+    ctx.fillStyle=css('--muted'); [1,10,100].forEach(v=>{ const x=L+Math.log10(v)/2*W; ctx.fillText(String(v), x-4, c.height-20); }); ctx.fillText('1/(1−S)', L+W/2-18, c.height-6);
+    [0,0.5,1].forEach(v=>ctx.fillText(v.toFixed(1), 14, ys(v)+3));
+  }
+  function drawHist(k){
+    const c = document.getElementById('fdh'), ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+    const L=36, R=12, T=12, B=36, W=c.width-L-R, H=c.height-T-B; const nb=42; const bins=new Array(nb).fill(0);
+    P3.feature_dims_seed0[k].forEach(v=>{ const b=Math.min(nb-1, Math.max(0, Math.floor(v/1.05*nb))); bins[b]++; });
+    const mx = Math.max(1, ...bins); ctx.font='10px sans-serif';
+    bins.forEach((cnt,i)=>{ ctx.fillStyle=css('--accent'); const h=cnt/mx*H; ctx.fillRect(L+i*W/nb, T+H-h, W/nb-1, h); });
+    lines.forEach(([v,lab])=>{ const x=L+v/1.05*W; ctx.strokeStyle='#999'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+H); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle=css('--muted'); ctx.fillText(lab, x-6, T-2); });
+    ctx.fillStyle=css('--muted'); ctx.fillText('feature dimensionality D_i', L+W/2-50, c.height-6); ctx.fillText('max '+mx, 2, T+10);
+  }
+  function upd3(){ const k=+document.getElementById('s3').value; const v=P3.inv_density[k];
+    document.getElementById('s3v').textContent = `1/(1−S) = ${v.toPrecision(3)}  (S = ${(1-1/v).toFixed(3)}),  m/‖W‖²_F = ${P3.dpf_mean[k].toFixed(3)} ± ${P3.dpf_std[k].toFixed(3)}`;
+    drawDpf(k); drawHist(k); }
+  document.getElementById('s3').addEventListener('input', upd3); upd3();
+})();
+</script>
+</body>
+</html>

@@ -31,11 +31,13 @@ def main():
            "represented_thresh": REPRESENTED_THRESH, "superpos_thresh": SUPERPOS_THRESH,
            "device": str(device), "runs": []}
     t0 = time.time()
+    all_W, all_b = [], []
     for seed in SEEDS:
         cfg_s = Config(N, M, len(SPARSITIES))
         model, info = train(cfg_s, importance[: len(SPARSITIES)], torch.tensor(SPARSITIES), steps=STEPS,
                             seed=seed, device=device, log_every=2000)
         W, b = model.W.detach().cpu().numpy(), model.b.detach().cpu().numpy()
+        all_W.append(W); all_b.append(b)
         norms, sp = feature_norms(W), superposition(W)
         for j, S in enumerate(SPARSITIES):
             rep = norms[j] > REPRESENTED_THRESH
@@ -52,6 +54,8 @@ def main():
             out["gram_seed0"] = gram(W).tolist()
         out.setdefault("train_info", []).append({k: v for k, v in info.items() if k != "history"})
     out["seconds_total"] = time.time() - t0
+    np.savez_compressed(ROOT / "results" / "phase1_W.npz", W=np.stack(all_W), b=np.stack(all_b),
+                        seeds=np.array(SEEDS), sparsities=np.array(SPARSITIES))
     # Summary across seeds
     summ = []
     for S in SPARSITIES:

@@ -24,7 +24,7 @@ written *before* each phase is run.
   (Paper, "Demonstrating superposition": with dense features the model is essentially PCA /
   keeps the top-m features.)
 
-## 2026-11-08 16:00 — Benchmark
+## 2026-11-08 15:55 — Benchmark
 
 - results/benchmark.json: MPS vs CPU on identical data/init. Loss trajectories agree to
   ~1e-7 relative. Phase-1-sized config (n=20, m=5, 24 instances): identical speed (~114 steps/s).
@@ -47,7 +47,7 @@ Paper, "Demonstrating superposition", n=20, m=5, importance 0.7^i:
 - S=0.999: essentially all 20 features represented in 5 dims.
 Checking: count of features with ||W_i|| > 0.5 should rise monotonically from 5 to ~20.
 
-### Phase 1 result (16:08)
+### Phase 1 result (15:58)
 - Ran 3 seeds x 6 sparsities, 10k steps, 80 s on MPS. results/phase1.json.
 - Features with ||W_i|| > 0.5 (mean over seeds): S=0: 5.0, 0.7: 6.3, 0.9: 9.3, 0.97: 10.0,
   0.99: 11.0, 0.999: 13.3. Monotone increase as expected; W^T W goes identity-block ->
@@ -69,3 +69,36 @@ bands at these fractions rather than a smooth spread. The paper noted the platea
 visible but noisy; plateaus at 1/2 and 2/5 are the clearest. Config here: n=200, m=20,
 40 sparsity points logspaced 1/(1-S) in [1, 100], 3 seeds, 10k steps, batch 1024.
 Benchmark says ~0.14 s/step for 120 instances => ~8 min per 40-instance chunk, ~25 min total.
+
+### Phase 2 expectations (written before running, 16:01)
+Paper, "Phase diagram" (n=2, m=1), x = relative importance of feature 1 in [0.1, 10],
+y = density 1-S in [1, 0.01]:
+- Dense (top): the single dimension goes to whichever feature is more important: feature 1
+  "not represented" for relative importance < 1, "dedicated" for > 1, with a sharp boundary
+  at relative importance ~1.
+- As sparsity grows the superposition region (antipodal W = [a, -a]) opens up from the
+  middle (importance ~1) and widens, until at 1-S ~ 0.01 almost all importances are in
+  superposition. Boundaries are roughly straight lines on the log-log plot.
+- The theoretical diagram (loss of the three candidate solutions) matches the empirical one
+  closely; the paper notes the empirical one is noisier near boundaries.
+Config: 30x30 grid, 3 seeds, 10k steps, run on CPU concurrently with Phase 3 on MPS
+(timing test: 900 instances ~17 steps/s on CPU => ~10 min per seed).
+
+### Phase 3 result (16:13)
+- 3 seeds x 40 sparsities, n=200, m=20, 10k steps: 955 s total on MPS (3 checkpointed chunks).
+- **Matches**: m/||W||_F^2 = 1.00 for 1/(1-S) <= 1.3, drops sharply between 1.4 and 2.0, and
+  sits on a flat plateau at 0.50-0.52 for 1/(1-S) in [2.3, 3.7] (15 of 120 sweep points
+  within +-0.02 of 1/2; seed-to-seed std 0.000-0.004). The per-feature scatter shows a razor
+  sharp band at D_i = 1/2 (antipodal digons) with all other features at D_i = 0 (dropped).
+- **Partially matches**: 2/5 appears only as a short shoulder (4 points within +-0.02;
+  per-feature bands at ~0.40 and ~0.44 for 1/(1-S) in [4.1, 4.6]), not a plateau as flat
+  as the 1/2 one. 3/8 and 1/3 are crossed smoothly (5 and 4 points nearby, consistent with
+  the sampling density, not with a plateau).
+- **Differs**: no clusters at 3/4 (tetrahedron) or 2/3 (triangle); the transition from 1 to
+  1/2 passes through them without stopping (histogram has single-digit counts there).
+- Observation not emphasised in the paper: in the dense regime with *uniform* importance the
+  per-feature dimensionality is ~m/n = 0.1 for every feature (the 20-dim subspace is
+  degenerate, so the model does not pick 20 features), even though m/||W||_F^2 = 1. At the
+  sparse end (1/(1-S) > 40) all 200 features are represented with D_i ~ 0.1 again and
+  ||W||_F^2 ~ 300 (feature norms > 1), so m/||W||_F^2 falls to 0.066, well below 1/n*m.
+- No hyperparameters were tuned.

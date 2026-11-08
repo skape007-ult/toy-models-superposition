@@ -6,10 +6,10 @@ Status key: [x] done, [~] in progress, [ ] next.
 - [x] Phase 0: core model/training/tests
 - [x] Benchmark MPS vs CPU -> results/benchmark.json (choice: mps)
 - [x] Phase 1 (n=20, m=5): results/phase1.json, figures/phase1_superposition.png
-- [~] Phase 3 (geometry, plateaus): scripts/phase3.py running, chunks in results/phase3_chunks
+- [x] Phase 3 (geometry, plateaus): results/phase3.json, figures/phase3_*.png
 - [ ] README
-- [ ] Phase 2 (phase diagram, reduced grid)
-- [ ] Phase 4, 5, docs site
+- [~] Phase 2 (30x30 grid, 3 seeds) running on CPU: scripts/phase2.py -> results/phase2.json
+- [~] Phase 4 running (scripts/phase4.py); Phase 5 (SAE, scripts/phase5_sae.py) next; docs/index.html written, data via scripts/export_docs.py
 
 How to resume: `source .venv/bin/activate && pytest -q`, then run the next unchecked
 script under scripts/ (each is idempotent / checkpointed; see notes/log.md for context).
