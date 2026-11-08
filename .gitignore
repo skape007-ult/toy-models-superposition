@@ -5,3 +5,4 @@ __pycache__/
 results/checkpoints/
 *.pt
 results/*.log
+results/phase2_empirical_ckpt.npz

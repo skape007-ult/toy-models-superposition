@@ -129,7 +129,7 @@ truth features to score recovery against.
   At S=0.999 the activations are so sparse that 5000 steps may be too few to recover the
   weakly-represented features, so recovery may fall short there.
 
-### Phase 5 result (16:24)
+### Phase 5 result (16:20)
 - 30 SAEs (6 sparsities x 5 L1 values) trained at once, 5000 steps, ~2 min on MPS.
 - Best L1 per sparsity, features recovered (cos > 0.9) / features the toy model represents:
   S=0: 2/5; 0.7: 5/5; 0.9: 9/9; 0.97: 10/10; 0.99: 10/11; 0.999: 9/13. Mean best cosine for
@@ -147,12 +147,40 @@ truth features to score recovery against.
   0.83-0.85: the dictionary has 20 slots but only 9-11 true features are present, and the
   extra live elements split or duplicate features.
 
-## 2026-11-08 16:30 — Docs site and Pages
+## 2026-11-08 16:22 — Docs site and Pages
 - docs/index.html is a single self-contained page (canvas drawing, no CDNs) reading docs/data.js,
   which scripts/export_docs.py writes from results/phase1.json and results/phase3.json.
 - GitHub Pages enabled via the API with build_type=workflow; .github/workflows/pages.yml deploys
   docs/ on pushes touching docs/** (first run failed only because Pages was not yet enabled;
   re-dispatched manually).
 - Dead end: the in-app browser preview could not open localhost (navigation denied) and node is not
-  installed, so the page was checked for data presence and by reading the code, not visually in a
-  browser from this session. Flagged in README limitations and in the hand-verification list.
+  installed, so the local page could not be checked. After the first successful deploy the public
+  Pages URL did open: both sliders work (checked S=0.99 and 1/(1-S)=3.26 programmatically and by
+  screenshot). First version had near-black bars on a dark canvas in dark mode; fixed by giving the
+  canvases a white background (second deploy).
+
+## 2026-11-08 16:35 — Phase 2 timing
+- Empirical part: 30x30 grid x 3 seeds (2700 models), 10k steps, ~7.5 min per seed on CPU
+  (run on CPU so that Phase 3 could use MPS at the same time). Done 16:25.
+- The "theoretical" diagram (constrained optimisation of 3 solution families on a 20k-sample
+  Monte-Carlo estimate, 1500 Adam steps each) is far slower than I estimated: ~0.66 s/step
+  under contention => ~35-50 min. Left running rather than killed, because the script only
+  writes results after both parts finish. Fixed for future runs: scripts/phase2.py now
+  checkpoints the empirical results to results/phase2_empirical_ckpt.npz before the theory
+  step (the running process predates this change; its outputs are otherwise identical).
+
+## 2026-11-08 16:45 — Phase 2 first result and a bug in the theory step
+- Empirical diagram (majority of 3 seeds): not represented 17%, dedicated 18%, superposition 65%
+  of cells. First theory diagram: 6% / 6% / 88%, agreement with empirical only 0.77, and all the
+  disagreement was theory saying "superposition" where the models say single-feature.
+- Cause: in the theory optimisation the biases started at exactly 0, so an unrepresented
+  feature's output was ReLU(0) whose PyTorch gradient is 0; the single-feature families could
+  never learn the optimal constant prediction (E[x] of the dropped feature) and were
+  under-rated. Fixed by initialising b at 0.1; theory step rerun from the saved empirical
+  checkpoint on MPS (float32).
+- Also seen in the empirical weights: besides the antipodal W = [a, -a] solution there are
+  *same-sign* solutions W ~ [1.05, 0.3-0.4] with a negative bias on the stronger feature, in
+  a band around relative importance 0.4-0.9 (and its mirror 1.1-2.5). Seeds frequently
+  disagree there (some find antipodal, some same-sign, some single-feature), which produces
+  the speckled vertical stripes in the empirical diagram. The paper's three-family theory
+  has no such family; this multi-stability is reported, not tuned away.

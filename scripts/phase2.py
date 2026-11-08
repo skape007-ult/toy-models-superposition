@@ -48,20 +48,26 @@ def empirical(device):
     return np.array(classes), np.array(Ws), np.array(bs), np.array(losses)
 
 
-def theoretical(n_samples=20_000, steps=1500):
-    """Best loss per family per cell, by optimising (a, b0, b1) on a fixed MC sample. CPU."""
+def theoretical(n_samples=20_000, steps=1500, device=None):
+    """Best loss per family per cell, by optimising (a, b0, b1) on a fixed MC sample.
+
+    Biases start at +0.1, not 0: with b = 0 the output of an unrepresented feature is
+    ReLU(0), whose gradient is 0 in PyTorch, so the bias could never move (first version of
+    this script had that bug and under-estimated the single-feature families).
+    """
+    device = torch.device(device) if device is not None else get_device()
     torch.manual_seed(0)
-    g = torch.Generator().manual_seed(123)
+    g = torch.Generator(device=device).manual_seed(123)
     cells = [(r, d) for d in DENSITY for r in REL_IMPORTANCE]
     I = len(cells)
-    imp = torch.tensor([[1.0, r] for r, _ in cells])            # (I, 2)
-    dens = torch.tensor([d for _, d in cells])                  # (I,)
-    x = torch.rand(n_samples, I, 2, generator=g) * (torch.rand(n_samples, I, 2, generator=g) < dens[None, :, None])
-    fam_dirs = torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, -1.0]])
+    imp = torch.tensor([[1.0, r] for r, _ in cells], dtype=torch.float32, device=device)  # (I, 2)
+    dens = torch.tensor([d for _, d in cells], dtype=torch.float32, device=device)  # (I,)
+    x = torch.rand(n_samples, I, 2, generator=g, device=device) * (torch.rand(n_samples, I, 2, generator=g, device=device) < dens[None, :, None])
+    fam_dirs = torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, -1.0]], device=device)
     best = []
     for fd in fam_dirs:
-        a = torch.ones(I, requires_grad=True)
-        b = torch.zeros(I, 2, requires_grad=True)
+        a = torch.ones(I, device=device, requires_grad=True)
+        b = torch.full((I, 2), 0.1, device=device, requires_grad=True)
         opt = torch.optim.Adam([a, b], lr=2e-2)
         for _ in range(steps):
             W = a[:, None] * fd[None, :]                        # (I, 2)
@@ -69,7 +75,8 @@ def theoretical(n_samples=20_000, steps=1500):
             out = torch.relu(h[:, :, None] * W[None] + b[None])  # (B, I, 2)
             loss_i = (imp[None] * (x - out) ** 2).mean(dim=(0, 2))
             opt.zero_grad(); loss_i.sum().backward(); opt.step()
-        best.append(loss_i.detach())
+        best.append(loss_i.detach().cpu())
+        print(f"  family {fd.tolist()} done", flush=True)
     best = torch.stack(best, 0)  # (3, I)
     return best.argmin(0).numpy().reshape(GRID, GRID), best.numpy().reshape(3, GRID, GRID)
 
@@ -77,19 +84,40 @@ def theoretical(n_samples=20_000, steps=1500):
 def main():
     t0 = time.time()
     device = get_device()
-    classes, Ws, bs, losses = empirical(device)
+    ckpt = ROOT / "results" / "phase2_empirical_ckpt.npz"
+    if ckpt.exists():
+        z = np.load(ckpt)
+        classes, Ws, bs, losses = z["classes"], z["Ws"], z["bs"], z["losses"]
+        print("loaded empirical checkpoint", flush=True)
+    else:
+        classes, Ws, bs, losses = empirical(device)
+        np.savez_compressed(ckpt, classes=classes, Ws=Ws, bs=bs, losses=losses)
+    print("computing theoretical diagram (20k MC samples, 3 families x 1500 steps)", flush=True)
     theo_cls, theo_loss = theoretical()
+    ckpt.unlink(missing_ok=True)
     # majority vote over seeds; also agreement fraction with theory
     sys.path.insert(0, str(ROOT / "scripts")); from scipy_free_mode import mode_axis0  # noqa
     maj = mode_axis0(classes)
     agree = float((maj == theo_cls).mean())
     agree_per_seed = [float((c == theo_cls).mean()) for c in classes]
+    # Extra diagnostics: seed instability, same-sign ("positive") superposition, and the gap between
+    # the trained loss and the best family loss (positive gap => trained model in a worse local optimum).
+    unanimous = (classes == classes[0]).all(0)
+    same_sign = ((np.sign(Ws[..., 0]) == np.sign(Ws[..., 1])) & (np.abs(Ws[..., 0]) > THRESH) & (np.abs(Ws[..., 1]) > THRESH))
+    theo_best = theo_loss.min(0)
+    gap = losses - theo_best[None]
+    diagnostics = {"frac_cells_all_seeds_agree": float(unanimous.mean()),
+                   "frac_models_same_sign_superposition": float(same_sign.mean()),
+                   "frac_models_loss_above_theory_by_1e-3": float((gap > 1e-3).mean()),
+                   "mean_loss_gap": float(gap.mean()), "max_loss_gap": float(gap.max())}
+    print(diagnostics)
     out = {"n": 2, "m": 1, "grid": GRID, "seeds": N_SEEDS, "steps": STEPS, "thresh": THRESH,
            "rel_importance": REL_IMPORTANCE.tolist(), "density": DENSITY.tolist(),
            "class_names": ["not represented", "dedicated dimension", "superposition"],
            "classes_per_seed": classes.tolist(), "class_majority": maj.tolist(),
            "theory_class": theo_cls.tolist(), "theory_family_loss": theo_loss.tolist(),
            "agreement_majority_vs_theory": agree, "agreement_per_seed": agree_per_seed,
+           "diagnostics": diagnostics, "theory_note": "biases initialised at 0.1; 20k MC samples; 1500 Adam steps per family",
            "W_per_seed": Ws.tolist(), "b_per_seed": bs.tolist(), "loss_per_seed": losses.tolist(),
            "class_fractions_majority": {name: float((maj == k).mean()) for k, name in
                                         enumerate(["not represented", "dedicated dimension", "superposition"])},
