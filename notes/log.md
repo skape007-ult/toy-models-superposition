@@ -102,3 +102,47 @@ Config: 30x30 grid, 3 seeds, 10k steps, run on CPU concurrently with Phase 3 on 
   sparse end (1/(1-S) > 40) all 200 features are represented with D_i ~ 0.1 again and
   ||W||_F^2 ~ 300 (feature norms > 1), so m/||W||_F^2 falls to 0.066, well below 1/n*m.
 - No hyperparameters were tuned.
+
+### Phase 4 (16:17) — process note and result
+- Process slip: I launched scripts/phase4.py before writing the expectations entry (the
+  paper's claim for this section: with dense features each neuron is monosemantic, i.e.
+  responds to one feature; as sparsity grows neurons become polysemantic, with a mix of
+  mono- and polysemantic neurons at intermediate sparsity). The entry below was written
+  after seeing the summary numbers, so treat the "expectation" as not pre-registered.
+- Assumption: importance 0.8^i, n=100, m=40 neurons, x in [-1,1], target |x|, 2 seeds.
+- Result (neurons with polysemanticity < 0.1 counted as monosemantic, mean of 2 seeds):
+  S=0: 40 mono / 0 poly; 0.5: 37/3; 0.8: 34.5/5.5; 0.9: 31.5/8.5; 0.97: 5.5/34.5;
+  0.99: 0/40. Qualitatively the paper's picture: monosemantic at low sparsity, a sharp
+  switch to polysemantic between S=0.9 and S=0.97. 23 s per seed on MPS.
+
+### Phase 5 expectations (written before running, 16:18) — extension (b): SAE on hidden activations
+Choice: (b) because it connects the toy model directly to the dictionary-learning / SAE
+programme that followed this paper, and the toy model gives a rare case with known ground
+truth features to score recovery against.
+- Setup: SAE with dictionary 20 (= n) on the 5-dim hidden activations h = W x of the Phase 1
+  seed-0 models; L1 coefficients {1e-3 .. 1e-1}; 5000 steps, batch 4096.
+- Expected: at S=0 the model keeps only 5 orthogonal features, and the SAE should recover
+  those 5 (the other 15 are not present in h at all). At intermediate sparsity (0.9-0.99)
+  the 9-11 represented features are in superposition; an SAE with an appropriate L1 should
+  recover most of them (cos > 0.9) since the data is genuinely sparse. Too small an L1 should
+  give a dense, non-feature-aligned basis; too large an L1 should kill dictionary elements.
+  At S=0.999 the activations are so sparse that 5000 steps may be too few to recover the
+  weakly-represented features, so recovery may fall short there.
+
+### Phase 5 result (16:24)
+- 30 SAEs (6 sparsities x 5 L1 values) trained at once, 5000 steps, ~2 min on MPS.
+- Best L1 per sparsity, features recovered (cos > 0.9) / features the toy model represents:
+  S=0: 2/5; 0.7: 5/5; 0.9: 9/9; 0.97: 10/10; 0.99: 10/11; 0.999: 9/13. Mean best cosine for
+  represented features 0.99 at S=0.7-0.97.
+- **As expected**: in the superposition regime (S=0.9-0.99) the SAE recovers essentially every
+  feature the toy model represents, with an L1 of 0.03-0.1; too small an L1 gives a dense,
+  unaligned dictionary (0-3 features, precision ~0.1). At S=0.999 recovery drops to 9/13 and the
+  mean cosine to 0.92 (the weakest features fire in ~4 of 16k samples).
+- **Not expected / worth noting**: at S=0 the SAE recovers only 2 of the 5 features even though
+  they are orthogonal and h = W x is exactly 5-dimensional. With dense inputs any rotation of
+  the basis reconstructs h equally well and the L1 penalty has little to bite on (L0 stays at
+  6-12 of 20), so the dictionary is not identifiable. Sparsity in the *data* is what makes the
+  SAE find the true basis, which is the premise of the SAE programme.
+- Precision (fraction of live dictionary elements aligned with a true feature) peaks at
+  0.83-0.85: the dictionary has 20 slots but only 9-11 true features are present, and the
+  extra live elements split or duplicate features.
