@@ -1,0 +1,38 @@
+{
+ "configs": [
+  {
+   "name": "phase1-like",
+   "n": 20,
+   "m": 5,
+   "instances": 24,
+   "steps": 300,
+   "batch": 1024,
+   "cpu_seconds": 2.6229140758514404,
+   "cpu_steps_per_sec": 114.37660225397019,
+   "mps_seconds": 2.6203980445861816,
+   "mps_steps_per_sec": 114.48642339655561,
+   "max_rel_loss_diff_cpu_vs_mps": 2.1733777310936242e-07,
+   "mps_correct": true
+  },
+  {
+   "name": "phase3-like",
+   "n": 200,
+   "m": 20,
+   "instances": 120,
+   "steps": 100,
+   "batch": 1024,
+   "cpu_seconds": 30.36148715019226,
+   "cpu_steps_per_sec": 3.293646306102195,
+   "mps_seconds": 17.329869985580444,
+   "mps_steps_per_sec": 5.770383741090174,
+   "max_rel_loss_diff_cpu_vs_mps": 9.142586313328867e-08,
+   "mps_correct": true
+  }
+ ],
+ "mps_speedups": [
+  1.000960171402378,
+  1.7519743180678766
+ ],
+ "choice": "mps",
+ "torch": "2.15.0"
+}

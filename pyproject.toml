@@ -1,0 +1,9 @@
+[project]
+name = "tms"
+version = "0.1.0"
+description = "Reproduction of Elhage et al. 2022, Toy Models of Superposition"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
