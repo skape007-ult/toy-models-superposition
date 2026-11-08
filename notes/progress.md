@@ -7,7 +7,6 @@ Status key: [x] done, [~] in progress, [ ] next.
 - [x] Benchmark MPS vs CPU -> results/benchmark.json (choice: mps)
 - [x] Phase 1 (n=20, m=5): results/phase1.json, figures/phase1_superposition.png
 - [x] Phase 3 (geometry, plateaus): results/phase3.json, figures/phase3_*.png
-- [ ] README
 - [x] Phase 2 (30x30 grid, 3 seeds): results/phase2.json, figures/phase2_*.png (n=3, m=2 variant NOT done)
 - [x] Phase 4: results/phase4.json, figures/phase4_neurons.png
 - [x] Phase 5 (SAE): results/phase5_sae.json, figures/phase5_sae_recovery.png
