@@ -14,9 +14,11 @@ data = {"phase1": {"n": p1["n"], "m": p1["m"], "sparsities": [r["sparsity"] for 
 p3f = ROOT / "results" / "phase3.json"
 if p3f.exists():
     p3 = json.loads(p3f.read_text())
-    data["phase3"] = {"n": p3["n"], "m": p3["m"], "inv_density": [round(v, 3) for v in p3["inv_density"]],
-                      "dpf_mean": [round(v, 4) for v in p3["dims_per_feature_mean_over_seeds"]],
-                      "dpf_std": [round(v, 4) for v in p3["dims_per_feature_std_over_seeds"]],
+    # 6 dp: the page rounds these again for display (toPrecision(3) / toFixed(3)), so
+    # exporting at 3-4 dp made some readouts wrong in the last digit (double rounding).
+    data["phase3"] = {"n": p3["n"], "m": p3["m"], "inv_density": [round(v, 6) for v in p3["inv_density"]],
+                      "dpf_mean": [round(v, 6) for v in p3["dims_per_feature_mean_over_seeds"]],
+                      "dpf_std": [round(v, 6) for v in p3["dims_per_feature_std_over_seeds"]],
                       "plateaus": p3["plateau_counts_within_0.02"]}
     # one seed's per-feature dimensionality for the slider (40 points x 200 features, rounded)
     data["phase3"]["feature_dims_seed0"] = [[round(v, 3) for v in row] for row in p3["per_seed"][0]["feature_dimensionality"]]
