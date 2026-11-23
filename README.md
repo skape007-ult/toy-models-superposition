@@ -25,7 +25,7 @@ CPU plus the Monte-Carlo theory step) is 58.
 ```bash
 uv venv --python 3.12 .venv && source .venv/bin/activate
 uv pip install -r requirements.txt
-pytest -q                      # 5 tests: shapes, sparsity statistics, hand-computed loss, metrics, top-m sanity check
+pytest -q                      # 8 tests: shapes, sparsity statistics, hand-computed loss, metrics, top-m sanity check, D_i and m/‖W‖²_F definitions, Phase 2 r/24 theory loss
 scripts/run_all.sh             # benchmark + all phases + docs data
 ```
 
@@ -167,8 +167,8 @@ feature's dimensionality `D_i = ‖W_i‖² / Σ_j(Ŵ_i·W_j)²`.
 
 **Matches the paper.** The curve is 1.00 up to 1/(1−S) ≈ 1.3, drops steeply, and sits on a flat
 plateau at 0.50–0.52 for 1/(1−S) ∈ [2.3, 3.7] in all three seeds (seed-to-seed std ≤ 0.004). The
-per-feature scatter in that range is a single sharp band at D_i = 1/2: the model represents 40
-features as 20 antipodal pairs and drops the other 160 (D_i = 0). This is the "sticky" digon plateau.
+per-feature scatter in that range is a single sharp band at D_i = 1/2: the model represents 38
+features as 19 antipodal pairs and drops the other 162 (D_i = 0). This is the "sticky" digon plateau.
 
 **Partially matches.** 2/5 (pentagons) is a shoulder rather than a plateau: for 1/(1−S) ∈ [4.1, 4.6]
 the per-feature bands sit at ≈0.40 and ≈0.44 and the curve lingers near 0.39–0.43 for two sweep
